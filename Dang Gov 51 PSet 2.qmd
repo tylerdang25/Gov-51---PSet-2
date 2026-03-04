@@ -1,0 +1,150 @@
+---
+title: "Dang Gov 51 PSet 2"
+author: "Tyler Dang"
+format: pdf
+editor: visual
+---
+
+# Part 1: The Original Study
+
+## 1.1: Exploring the Experiment
+
+### 1.1.1 - Load packages and data
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+gay <- read.csv("data/raw/gay.csv")
+```
+
+### Q.1.1
+
+```{r}
+nrow(gay)
+unique(gay$study)
+unique(gay$treatment)
+```
+
+We can see, then, that there are 69,592 observations in the "gay" dataset. The "study" variable has two possible values: 1 and 2.
+
+Meanwhile, the "treatment" variable has five possible values: No Contact, Same-Sex marriage Script by Gay Canvasser, Same-Sex Marriage Script by Straight Canvasser, Recycling Script by Gay Canvasser, or Recycling Script by Straight Canvasser.
+
+### Q.1.2
+
+```{r}
+ssm_means <- gay %>%
+  filter(study == 1 & wave == 1) %>%
+  group_by(treatment) %>% 
+  summarize(mean_ssm = mean(ssm))
+
+
+```
+
+We can see that the average support is very similar among the different treament groups (for study one and wave one), but, Recycling Script by Gay Canvasser had the highest average Same Sex Marriage Rating attitude at 3.13.
+
+### Q.1.3
+
+```{r}
+gay %>%
+  filter(study == 1 & wave == 1) %>%
+  group_by(treatment) %>% 
+  summarize(sd_ssm = sd(ssm))
+
+ssm_means
+```
+
+We can see that the standard deviations for the five treatment levels are very similar varying from 1.67 to 1.70. This is crucial for randomized testing as it supports the idea that if standard deviations and thus variances are similar among treatment groups, we can attribute the differences in treatment group means more to the treatment itself instead of confounding variables. In essence, the similarity of the standard deviations gives us more confidence that the differences in each treatment mean was because the treatment was imposed.
+
+### Q.1.4
+
+```{r}
+ssm_means %>% 
+  ggplot(mapping = aes(x = treatment, y = mean_ssm, fill = treatment)) +
+  geom_col() +
+  labs(title = "Mean SSM by Treatment Group (Study 1 and Wave 1)",
+    x = "Treatment Group",
+    y = "Mean SSM")+
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+```
+
+## 1.2 Checking Balance and Comparing Outcomes
+
+### Q.1.5
+
+```{r}
+gay %>%
+  filter(study == 1 & wave == 1) %>%
+  filter(treatment %in% c("No Contact", "Same-Sex Marriage Script by Gay Canvasser")) %>% 
+  group_by(treatment) %>% 
+  summarize(mean_ssm = mean(ssm),
+            sd_ssm = sd(ssm))
+
+
+            
+```
+
+### Q.1.6
+
+# Part 2: The Forensic Discovery
+
+## 2.1: The Baseline Distribution
+
+### Q.2.1
+
+### Q.2.2
+
+### Q.2.3
+
+## 2.2: Re-test Reliability
+
+### Q.2.4
+
+### Q.2.5
+
+## 2.3: Putting It All Together
+
+### Q.2.6
+
+# Part 3: What Real Data Looks Like
+
+## 3.1: Comparing Baselines
+
+### Q.3.1
+
+### Q.3.2
+
+## 3.2: Checking Balance and Comparing Outcomes in Study 2
+
+### Q.3.3
+
+### Q.3.4
+
+## 3.3: Uncertainty Around the Difference
+
+### Q.3.5
+
+## 3.4: Tracking Attitudes Over Time
+
+### Q.3.6
+
+### Q.3.7
+
+# Part 4: Formalizing the Evidence with Regression
+
+## 4.1: Regression as a Fraud Detector
+
+### Q.4.1
+
+### Q.4.2
+
+## 4.2: Comparing Groups with Regression
+
+### Q.4.3
+
+## 4.3: Controlling for Baseline Attitudes
+
+### Q.4.4
+
+### Q.4.5
