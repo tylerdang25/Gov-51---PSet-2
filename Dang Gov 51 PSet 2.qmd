@@ -14,6 +14,9 @@ editor: visual
 ```{r}
 library(tidyverse)
 library(dplyr)
+library(broom)
+library(knitr)
+library(tinytex)
 
 gay <- read.csv("data/raw/gay.csv")
 ```
@@ -185,8 +188,6 @@ ggplot(combined, aes(x = therm, fill = source)) +
 
 Based on the two graphs, it is clear that the LaCour Study 1 and CCAP2012 baselines are from similar populations. If the two are truly randomly selected, the shape of the two distributions should show resemblance. As we can see, that is the case where there are three peaks: one near 0, one near 50 (which is the highest) and another near 100 (the second largest) on the feeling thermometer scale.
 
-While the CCAP2012 has higher peaks, the distributions are similar. The difference in counts is explainable by the fact that CCAP2012 had a higher dataset size than the LeCour Study 1.
-
 ## 2.2: Re-test Reliability
 
 ### Q.2.4
@@ -344,7 +345,7 @@ upper <- diff_means + 1.96 * gay_r_stas3.5$SE[1]
 c(lower, upper)
 ```
 
-Since our confidence interval from 1.29 to 5.84 does not include 0, we are 95% confident that the population difference in means excludes 0 or no difference. So, we can conclude that there is a statistically signnificant difference between the treatment and control groups. Canvassing on average positively affected the attitude towards gay populations by 1.29 to 5.84 points on the thermometer scale.
+Since our confidence interval from 1.29 to 5.84 does not include 0, had we conducted the sampling procedure many times, 95% of the resulting interval will capture the true difference in means. So, we can conclude that there is a statistically signnificant difference between the treatment and control groups. Canvassing on average positively affected the attitude towards gay populations by 1.29 to 5.84 points on the thermometer scale.
 
 ## 3.4: Tracking Attitudes Over Time
 
@@ -387,11 +388,67 @@ Simple measurement tools aided in detecting the fraud by revealing the unlikely 
 
 ### Q.4.1
 
+```{r}
+
+fit_s1 <- lm(therm2 ~ therm1, data = gay_r,subset = study == 1)
+
+tidy(fit_s1) %>%
+  kable(digits = 3, caption = "Study 1: Regression Fit for Therm2 from Therm1")
+
+summary(fit_s1)$r.squared
+summary(fit_s1)$sigma
+```
+
+Our $\beta_1$ coefficient has a value of .991 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .991 increase to the therm2 response.
+
+The $R^2$ value is .98 allowing us to determine that 98% of the variance seen is explainable by therm1 for the regression model.
+
+Our Residual Standard Error is 2.75 meaning that the average variance from the regression line is only 2.75 points on the thermometer scale.
+
 ### Q.4.2
+
+```{r}
+fit_s2 <- lm(therm2 ~ therm1, data = gay_r,subset = study == 2)
+
+tidy(fit_s2) %>%
+  kable(digits = 3, caption = "Study 2: Regression Fit for Therm2 from Therm1")
+
+summary(fit_s2)$r.squared
+summary(fit_s2)$sigma
+```
+
+Our $\beta_1$ coefficient has a value of .967 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .967 increase to the therm2 response.
+
+The $R^2$ value is .92 allowing us to determine that 98% of the variance seen is explainable by therm1 for the regression model.
+
+Our Residual Standard Error is 7.96 meaning that the average variance from the regression line is only 2.75 points on the thermometer scale.
+
+Compared to Study 1, we can see that Study 2 is much more realistic. In study 1, the $\beta_1$ coefficient is .991 which is very close to 1 indicating that the corresponding increase to therm2 from therm1 is nearly identical to that increase in therm1. Moreover, the $R^2$ value of .98 is also near 1 indicating that almost all of the variance in the regression model is due to therm1 (this eliminates an argument for large effects of confounding variables).
+
+Meanwhile for Study 2, the $\beta_1$ coefficient, while large, is lower than in Study 1. The $R^2$ is also lower allowing for the possibility of confounding variables having effect in the model.
 
 ## 4.2: Comparing Groups with Regression
 
 ### Q.4.3
+
+```{r}
+gay_r_4.3 <- gay_r %>% 
+  filter(study == 2 & treatment %in% c("Same-Sex Marriage Script by Gay Canvasser",
+                                       "No Contact")) %>% 
+  mutate(treated = case_when(treatment == 
+                                     "Same-Sex Marriage Script by Gay Canvasser" ~ 1,
+                                     treatment == "No Contact" ~ 0))
+
+fit_4.2 <- lm(therm2 ~ treated, gay_r_4.3)
+
+tidy(fit_4.2) %>%
+  kable(digits = 3, caption = "Study 2: Regression Fit for Treatment on Control")
+
+summary(fit_4.2)$r.squared
+summary(fit_4.2)$sigma
+```
+
+Our $\beta_1$ coefficient has a value of 3.568 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding 3.568 increase to the therm2 response.
 
 ## 4.3: Controlling for Baseline Attitudes
 
