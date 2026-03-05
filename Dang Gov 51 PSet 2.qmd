@@ -63,8 +63,8 @@ ssm_means %>%
   ggplot(mapping = aes(x = treatment, y = mean_ssm, fill = treatment)) +
   geom_col() +
   labs(title = "Mean SSM by Treatment Group (Study 1 and Wave 1)",
-    x = "Treatment Group",
-    y = "Mean SSM")+
+       x = "Treatment Group",
+       y = "Mean SSM")+
   theme_minimal() +
   theme(axis.text.x = element_blank())
 ```
@@ -80,14 +80,17 @@ gay1.5 <- gay %>%
   group_by(treatment) %>% 
   summarise(mean_ssm = mean(ssm), 
             sd_ssm   = sd(ssm)) %>%
-  summarise(std_diff_mean = diff(mean_ssm) / 
-            sqrt((sd_ssm[1]^2 + sd_ssm[2]^2) / 2))
+  mutate(std_diff_mean = 
+           (mean_ssm[treatment == "Same-Sex Marriage Script by Gay Canvasser"] -
+            mean_ssm[treatment == "No Contact"]) /
+            sqrt((sd_ssm[treatment == "Same-Sex Marriage Script by Gay Canvasser"]^2 +
+                  sd_ssm[treatment == "No Contact"]^2) / 2))
 
 gay1.5
             
 ```
 
-The standardized difference is **−0.0105**, which is extremely close to zero and far below the 0.25 threshold for imbalance. This indicates that the “Same-Sex Marriage Script by Gay Canvasser” and “No Contact” groups are essentially identical. The groups therefore appear very well balanced, consistent with successful randomization.
+The standardized difference is −0.0105, which is extremely close to zero and far below the 0.25 threshold for imbalance. This indicates that the “Same-Sex Marriage Script by Gay Canvasser” and “No Contact” groups are essentially identical. The groups therefore appear very well balanced, consistent with successful randomization.
 
 ### Q.1.6
 
@@ -140,16 +143,16 @@ For gay reshaped, the column names are study, treatment, therm1, therm2, therm3,
 gay_study1_stats <- gay_r %>%
   filter(study == 1) %>%
   summarise(mean = mean(therm1),
-    median = median(therm1),
-    sd = sd(therm1))
+            median = median(therm1),
+            sd = sd(therm1))
 
 ccap_stats <- ccap %>%
   summarise(mean = mean(gaytherm, na.rm = TRUE),
-    median = median(gaytherm, na.rm = TRUE),
-    sd = sd(gaytherm, na.rm = TRUE))
+            median = median(gaytherm, na.rm = TRUE),
+            sd = sd(gaytherm, na.rm = TRUE))
 
 bind_rows(GayR_Study1_Therm1 = gay_study1_stats,
-  CCAP_GayTherm = ccap_stats, .id = "Dataset")
+          CCAP_GayTherm = ccap_stats, .id = "Dataset")
 ```
 
 The two datasets look very similar. The means (58.38 vs. 58.71), medians (52 vs. 54), and standard deviations (28.50 vs. 29.37) are nearly identical, indicating very similar distributions of baseline feelings toward gay men and lesbians. This suggests that the Study 1 experimental sample closely resembles the broader CCAP 2012 sample in overall feeling toward gay people.
@@ -175,8 +178,8 @@ ggplot(combined, aes(x = therm, fill = source)) +
   geom_histogram(breaks = seq(0, 100, by = 5)) +
   facet_wrap(~source) +
   labs(title = "Baseline Feeling Thermometer Comparison Between LaCour and CCAP",
-  x = "Feeling Thermometer (0–100)",
-  y = "Count") +
+       x = "Feeling Thermometer (0–100)",
+       y = "Count") +
   theme(legend.position = "none")
 ```
 
@@ -193,7 +196,7 @@ control <- gay_r %>%
   filter(treatment == "No Contact" & study %in% c(1, 2)) %>%
   group_by(study) %>%
   summarise(correlation = cor(therm1, therm2, use = "complete.obs"),
-    sd_change = sd(therm2 - therm1, na.rm = TRUE))
+            sd_change = sd(therm2 - therm1, na.rm = TRUE))
 
 control
 ```
@@ -211,10 +214,10 @@ ggplot(control2.5, aes(x = therm1, y = therm2, color = study)) +
   geom_point(alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0) +
   facet_wrap(~study, labeller = labeller(study = c(`1` = "Study 1",
-                                                    `2` = "Study 2"))) +
+                                                   `2` = "Study 2"))) +
   labs(title = "Test–Retest Feeling Thermometers (Control Group)",
-  x = "Therm1", 
-  y = "Therm2") +
+       x = "Therm1", 
+       y = "Therm2") +
   theme(legend.position = "none")
 ```
 
@@ -240,23 +243,143 @@ One might produce data with these properties as it mimics an existing dataset th
 
 ### Q.3.1
 
+```{r}
+gay_r_s2 <- gay_r %>%
+  filter(study == 2)
+
+nrow(gay_r_s2)
+
+gay_r_s2 %>%
+  group_by(treatment) %>%
+  summarise(mean_therm1 = mean(therm1),
+            sd_therm1 = sd(therm1),
+            n = n())
+```
+
+There are 2441 observations in Study 2 of the gay reshaped data set. The mean therm1 response was 59.34 for the treatment compared to 56.89 for the control group, while the standard deviation for the treatment was 28.42 against 28.70 for the control.
+
 ### Q.3.2
+
+```{r}
+baseline3.2 <- gay_r %>%
+  filter(study %in% c(1, 2)) %>%
+  select(study, therm1) %>%
+  mutate(source = ifelse(study == 1, "Study 1", "Study 2"))
+
+ggplot(baseline3.2, aes(x = therm1, fill = source)) +
+  geom_histogram(breaks = seq(0, 100, by = 5)) +
+  facet_wrap(~source) +
+  labs(title = "Baseline Feeling Thermometer Comparison",
+       x = "Therm1 (0–100)",
+       y = "Count") +
+  theme(legend.position = "none")
+```
+
+From the graph we can see that the shape of the graph is very similar between study 1 and study 2. The biggest difference is the extremity of the graph (the count at each level is lower for study 2 than study 1). Also, study 1 has much more extreme spikes at its modes (0, 50, 100) while study 2 is much flatter. Going back to the idea of fabrication, the extreme spikes in study 1 look much more unrealistic.
 
 ## 3.2: Checking Balance and Comparing Outcomes in Study 2
 
 ### Q.3.3
 
+```{r}
+gay_r_S2_3.3 <- gay_r %>%
+  filter(study == 2 & treatment %in% c("Same-Sex Marriage Script by Gay Canvasser",
+                                       "No Contact")) %>% 
+  group_by(treatment) %>%
+  summarise(mean_therm1 = mean(therm1),
+            sd_therm1 = sd(therm1)) %>% 
+  mutate(std_diff_mean = 
+           (mean_therm1[treatment == "Same-Sex Marriage Script by Gay Canvasser"] -
+            mean_therm1[treatment == "No Contact"]) /
+            sqrt((sd_therm1[treatment == "Same-Sex Marriage Script by Gay Canvasser"]^2 +
+                  sd_therm1[treatment == "No Contact"]^2) / 2))
+
+gay_r_S2_3.3
+```
+
+With a standardized difference of 0.051, which is very small and below the 0.25 threshold for imbalance, study 2 seems to be well balanced. We can also look at the baaseline means (57.89 vs. 59.35) and standard deviations (28.70 vs. 28.42) to see that these are also very similar across groups. So, the treatment and control groups in Study 2 appear well balanced at baseline, and thus probably conducted with true random assignment.
+
 ### Q.3.4
+
+```{r}
+gay_r_s2_3.4 <- gay_r %>%
+  filter(study == 2 & treatment %in% c("Same-Sex Marriage Script by Gay Canvasser",
+                                       "No Contact")) %>%
+  group_by(treatment) %>%
+  summarise(mean_therm2 = mean(therm2, na.rm = TRUE)) %>% 
+  mutate(diff_means = mean_therm2[treatment == "Same-Sex Marriage Script by Gay Canvasser"] -
+         mean_therm2[treatment == "No Contact"])
+
+gay_r_s2_3.4
+```
+
+The post-period mean for the No Contact group is 57.64 while the mean for the Same-Sex Marriage Script by Gay Canvasser group is 61.20. The difference in post-period means (gay canvasser - no contact) is 3.57 points on the thermometer feeling scale.
 
 ## 3.3: Uncertainty Around the Difference
 
 ### Q.3.5
 
+```{r}
+gay_r_stas3.5 <- gay_r %>%
+  filter(study == 2 & treatment %in% c("Same-Sex Marriage Script by Gay Canvasser",
+                                       "No Contact")) %>%
+  group_by(treatment) %>%
+  summarise(mean_therm2 = mean(therm2, na.rm = TRUE),
+            var_therm2  = var(therm2, na.rm = TRUE),
+            n = n()) %>% 
+  mutate(SE = sqrt(var_therm2[treatment == "Same-Sex Marriage Script by Gay Canvasser"] / 
+                   n[treatment == "Same-Sex Marriage Script by Gay Canvasser"] + 
+                   var_therm2[treatment == "No Contact"] /
+                   n[treatment == "No Contact"]))
+
+gay_r_stas3.5
+
+diff_means <- gay_r_stas3.5$mean_therm2[gay_r_stas3.5$treatment == 
+                                        "Same-Sex Marriage Script by Gay Canvasser"] - 
+              gay_r_stas3.5$mean_therm2[gay_r_stas3.5$treatment == "No Contact"]
+
+lower <- diff_means - 1.96 * gay_r_stas3.5$SE[1]
+upper <- diff_means + 1.96 * gay_r_stas3.5$SE[1]
+
+c(lower, upper)
+```
+
+Since our confidence interval from 1.29 to 5.84 does not include 0, we are 95% confident that the population difference in means excludes 0 or no difference. So, we can conclude that there is a statistically signnificant difference between the treatment and control groups. Canvassing on average positively affected the attitude towards gay populations by 1.29 to 5.84 points on the thermometer scale.
+
 ## 3.4: Tracking Attitudes Over Time
 
 ### Q.3.6
 
+```{r}
+s2_control <- gay_r %>%
+  filter(study == 2 & treatment == "No Contact")
+
+cor_therm2 <- cor(s2_control$therm1,
+                  s2_control$therm2,
+                  use = "complete.obs")
+
+cor_therm3 <- cor(s2_control$therm1,
+                  s2_control$therm3,
+                  use = "complete.obs")
+
+cor_therm4 <- cor(s2_control$therm1,
+                  s2_control$therm4,
+                  use = "complete.obs")
+
+c(cor_therm2, cor_therm3, cor_therm4)
+```
+
+The correlations of the subsequent waves with the initial survey seem plausible. While they are high, each falls within the expected, typical .95-.97 range. While there is a dip in the third wave followed by an increase back in the fourth wave, these correlations are plausible, and the differences can be explained by sampling variability.
+
 ### Q.3.7
+
+We can determine that Study 1 was fabricated due to the extreme differences from Study 2. In the first study, the re-test correlation between the first two waves was unrealistically high at .998 with a standard deviation of only 1.99. Study 2 had a much more realistic levels of these two with a correlation between waves falling within the .95-.97 range and a much larger standard deviation at 6.61.
+
+The baseline distributions were also different. Study 1 was very similar to the CCAP national survey with means of 58.4 vs 58.7 and standard deviations of 28.5 vs 29.4. The nearly identical pattern of Survey 1 with the national survey is very unlikely given the smaller survey size. Survey 2 on the other hand displayed much more natural variation in these metrics. Thus, Study 1 seemed very unnatural and "clean" relative to the survey data.
+
+Real treatment effects are smaller and messier than fabricated ones because real attitudes will fluctuate between rounds and people as respondents make rounding changes/errors, so the introduction of treatment will rarely provide such a large, consistent shift. Fabricated data may extremify the changes to more tidy effects.
+
+Simple measurement tools aided in detecting the fraud by revealing the unlikely high stability with very small variation (sd) and very similar distributions to the national survey (means). Graphical analysis also shows that the "effects" of treatment were unnaturally extremified.
 
 # Part 4: Formalizing the Evidence with Regression
 
