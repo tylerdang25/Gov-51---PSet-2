@@ -1,9 +1,11 @@
 ---
 title: "Dang Gov 51 PSet 2"
-author: "Tyler Dang"
+author: "Tyler Dang -- https://github.com/tylerdang25/Gov-51---PSet-2"
 format: pdf
 editor: visual
 ---
+
+<https://github.com/tylerdang25/Gov-51---PSet-2>
 
 # Part 1: The Original Study
 
@@ -39,9 +41,10 @@ Meanwhile, the "treatment" variable has five possible values: No Contact, Same-S
 ssm_means <- gay %>%
   filter(study == 1 & wave == 1) %>%
   group_by(treatment) %>% 
-  summarize(mean_ssm = mean(ssm))
+  summarize(mean_ssm = mean(ssm),
+            n = n())
 
-
+ssm_means
 ```
 
 We can see that the average support is very similar among the different treatment groups (for study one and wave one), but, Recycling Script by Gay Canvasser had the highest average Same Sex Marriage Rating attitude at 3.13.
@@ -103,7 +106,7 @@ gay1.6 <- gay %>%
   filter(study == 1 & wave == 2 & treatment %in% 
            c("Same-Sex Marriage Script by Gay Canvasser", "No Contact")) %>%
   group_by(treatment) %>%
-  summarise( mean_ssm = mean(ssm))
+  summarise(mean_ssm = mean(ssm))
 
 gay1.6
 
@@ -116,6 +119,8 @@ gay1.6 %>%
 The Wave 2 mean for No Contact is 3.0396, and for Same-Sex Marriage Script by Gay Canvasser it is 3.1395. The difference in means (gay canvasser − no contact) is 0.0999, or about 0.10 points.
 
 Because the groups were essentially identical at baseline (standardized difference about −0.01), this Wave 2 difference suggests a causal effect of the treatment. Specifically, exposure to the same-sex marriage script delivered by a gay canvasser increased support for same-sex marriage by about 0.10 points relative to no contact.
+
+{{< pagebreak >}}
 
 # Part 2: The Forensic Discovery
 
@@ -194,7 +199,7 @@ Based on the two graphs, it is clear that the LaCour Study 1 and CCAP2012 baseli
 
 ```{r}
 control <- gay_r %>%
-  filter(treatment == "No Contact" & study %in% c(1, 2)) %>%
+  filter(treatment == "No Contact") %>%
   group_by(study) %>%
   summarise(correlation = cor(therm1, therm2, use = "complete.obs"),
             sd_change = sd(therm2 - therm1, na.rm = TRUE))
@@ -237,6 +242,8 @@ Moreover, we found the study 1 control re-test correlation to be .998 which is m
 Finally, the standard deviation of per-person change in study 1 was only 1.99 while in study 2 it was much larger at 6.61. We can argue for fabrication as the standard deviation in 1 suggest that there was very little individual fluctuation between waves.
 
 One might produce data with these properties as it mimics an existing dataset thus ensuring realistic distributions, but there is little variation from the baseline producing patterns that seem consistent over time.
+
+{{< pagebreak >}}
 
 # Part 3: What Real Data Looks Like
 
@@ -323,26 +330,26 @@ The post-period mean for the No Contact group is 57.64 while the mean for the Sa
 ```{r}
 gay_r_stas3.5 <- gay_r %>%
   filter(study == 2 & treatment %in% c("Same-Sex Marriage Script by Gay Canvasser",
-                                       "No Contact")) %>%
+                                       "No Contact") & !is.na(therm2)) %>%
   group_by(treatment) %>%
-  summarise(mean_therm2 = mean(therm2, na.rm = TRUE),
-            var_therm2  = var(therm2, na.rm = TRUE),
-            n = n()) %>% 
-  mutate(SE = sqrt(var_therm2[treatment == "Same-Sex Marriage Script by Gay Canvasser"] / 
+  summarise(mean_therm2 = mean(therm2),
+            var_therm2  = var(therm2),
+            n = n()) %>%
+  summarize(diff_means = mean_therm2[treatment == "Same-Sex Marriage Script by Gay Canvasser"]
+            - mean_therm2[treatment == "No Contact"],
+            
+    SE = sqrt(var_therm2[treatment == "Same-Sex Marriage Script by Gay Canvasser"] / 
                    n[treatment == "Same-Sex Marriage Script by Gay Canvasser"] + 
+                
                    var_therm2[treatment == "No Contact"] /
-                   n[treatment == "No Contact"]))
+                   n[treatment == "No Contact"]),
+    
+    ci_math = 1.96*SE,
+    lower = diff_means - ci_math,
+    upper = diff_means + ci_math)
 
 gay_r_stas3.5
 
-diff_means <- gay_r_stas3.5$mean_therm2[gay_r_stas3.5$treatment == 
-                                        "Same-Sex Marriage Script by Gay Canvasser"] - 
-              gay_r_stas3.5$mean_therm2[gay_r_stas3.5$treatment == "No Contact"]
-
-lower <- diff_means - 1.96 * gay_r_stas3.5$SE[1]
-upper <- diff_means + 1.96 * gay_r_stas3.5$SE[1]
-
-c(lower, upper)
 ```
 
 Since our confidence interval from 1.29 to 5.84 does not include 0, had we conducted the sampling procedure many times, 95% of the resulting interval will capture the true difference in means. So, we can conclude that there is a statistically signnificant difference between the treatment and control groups. Canvassing on average positively affected the attitude towards gay populations by 1.29 to 5.84 points on the thermometer scale.
@@ -382,6 +389,8 @@ Real treatment effects are smaller and messier than fabricated ones because real
 
 Simple measurement tools aided in detecting the fraud by revealing the unlikely high stability with very small variation (sd) and very similar distributions to the national survey (means). Graphical analysis also shows that the "effects" of treatment were unnaturally extremified.
 
+{{< pagebreak >}}
+
 # Part 4: Formalizing the Evidence with Regression
 
 ## 4.1: Regression as a Fraud Detector
@@ -389,41 +398,44 @@ Simple measurement tools aided in detecting the fraud by revealing the unlikely 
 ### Q.4.1
 
 ```{r}
-
-fit_s1 <- lm(therm2 ~ therm1, data = gay_r,subset = study == 1)
+gay_4.1 <- gay_r %>% 
+  filter(study == 1 & treatment == "No Contact")
+fit_s1 <- lm(therm2 ~ therm1, gay_4.1)
 
 tidy(fit_s1) %>%
-  kable(digits = 3, caption = "Study 1: Regression Fit for Therm2 from Therm1")
+  kable(digits = 5, caption = "Study 1: Regression Fit for Therm2 from Therm1")
 
 summary(fit_s1)$r.squared
 summary(fit_s1)$sigma
 ```
 
-Our $\beta_1$ coefficient has a value of .991 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .991 increase to the therm2 response.
+Our $\beta_1$ coefficient has a value of .992 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .993 increase to the therm2 response.
 
-The $R^2$ value is .98 allowing us to determine that 98% of the variance seen is explainable by therm1 for the regression model.
+The $R^2$ value is .991 allowing us to determine that 99.5% of the variance seen is explainable by therm1 for the regression model.
 
-Our Residual Standard Error is 2.75 meaning that the average variance from the regression line is only 2.75 points on the thermometer scale.
+Our Residual Standard Error is 1.98 meaning that the average variance from the regression line is only 2.75 points on the thermometer scale.
 
 ### Q.4.2
 
 ```{r}
-fit_s2 <- lm(therm2 ~ therm1, data = gay_r,subset = study == 2)
+gay_4.2 <- gay_r %>% 
+  filter(study == 2 & treatment == "No Contact")
+fit_s2 <- lm(therm2 ~ therm1, gay_4.2)
 
 tidy(fit_s2) %>%
-  kable(digits = 3, caption = "Study 2: Regression Fit for Therm2 from Therm1")
+  kable(digits = 5, caption = "Study 2: Regression Fit for Therm2 from Therm1")
 
 summary(fit_s2)$r.squared
 summary(fit_s2)$sigma
 ```
 
-Our $\beta_1$ coefficient has a value of .967 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .967 increase to the therm2 response.
+Our $\beta_1$ coefficient has a value of .969 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding .969 increase to the therm2 response.
 
-The $R^2$ value is .92 allowing us to determine that 98% of the variance seen is explainable by therm1 for the regression model.
+The $R^2$ value is .948 allowing us to determine that 94.8% of the variance seen is explainable by therm1 for the regression model.
 
-Our Residual Standard Error is 7.96 meaning that the average variance from the regression line is only 2.75 points on the thermometer scale.
+Our Residual Standard Error is 6.547 meaning that the average variance from the regression line is only 7.963 points on the thermometer scale.
 
-Compared to Study 1, we can see that Study 2 is much more realistic. In study 1, the $\beta_1$ coefficient is .991 which is very close to 1 indicating that the corresponding increase to therm2 from therm1 is nearly identical to that increase in therm1. Moreover, the $R^2$ value of .98 is also near 1 indicating that almost all of the variance in the regression model is due to therm1 (this eliminates an argument for large effects of confounding variables).
+Compared to Study 1, we can see that Study 2 is much more realistic. In study 1, the $\beta_1$ coefficient is .991 which is very close to 1 indicating that the corresponding increase to therm2 from therm1 is nearly identical to that increase in therm1. Moreover, the $R^2$ value of .991 is also near 1 indicating that almost all of the variance in the regression model is due to therm1 (this eliminates an argument for large effects of confounding variables).
 
 Meanwhile for Study 2, the $\beta_1$ coefficient, while large, is lower than in Study 1. The $R^2$ is also lower allowing for the possibility of confounding variables having effect in the model.
 
@@ -439,19 +451,59 @@ gay_r_4.3 <- gay_r %>%
                                      "Same-Sex Marriage Script by Gay Canvasser" ~ 1,
                                      treatment == "No Contact" ~ 0))
 
-fit_4.2 <- lm(therm2 ~ treated, gay_r_4.3)
+fit_4.3 <- lm(therm2 ~ treated, gay_r_4.3)
 
-tidy(fit_4.2) %>%
-  kable(digits = 3, caption = "Study 2: Regression Fit for Treatment on Control")
+tidy(fit_4.3) %>%
+  kable(digits = 5, caption = "Study 2: Regression Fit for Treatment on Therm2")
 
-summary(fit_4.2)$r.squared
-summary(fit_4.2)$sigma
 ```
 
-Our $\beta_1$ coefficient has a value of 3.568 which is the slope. It means that for a 1 point increase in the therm1 response, we would expect a corresponding 3.568 increase to the therm2 response.
+Our $\beta_1$ coefficient has a value of 3.568 which is the slope. The standard error is 1.242.
+
+Our $t$-stat is 2.872.
+
+Finally, the $p$-value is .004.
+
+With a $p$-value of .004, which is below the $\alpha$-level of .05, the difference is statistically significant.
 
 ## 4.3: Controlling for Baseline Attitudes
 
 ### Q.4.4
 
+```{r}
+fit_4.4 <- lm(therm2 ~ treated + therm1, gay_r_4.3)
+
+tidy(fit_4.4) %>%
+  kable(digits = 5, caption = "Study 2: Treatment Effect on Therm2 Controlling for Baseline (therm1)")
+```
+
+The $\beta_1$ coefficient (the coefficient on treated) is 2.459. Compared to the uncontrolled coefficient of 3.568, $\beta_1$ decreased quite a bit.
+
+Our standard error under the controlled model is .341 which is a decrease from the uncontrolled error of 1.242.
+
+The $t$-statistic is 7.210 and the $p$-value is nearly 0. Adjusting the "digits = " gives a value in scientific notation that is incredibly small.
+
+Controlling for baseline attitudes improves precision because, as we tested, therm1 (the baseline) was a strong predictor of therm2. Therm1 explains much of the variation in outcomes thus reducing the residual variance. As such, when we control for therm1, we eliminate much of this error thus leading to a more precise estimate.
+
 ### Q.4.5
+
+```{r}
+summary(fit_4.3)$r.squared
+summary(fit_4.4)$r.squared
+```
+
+$R^2$ in the uncontrolled model is .004 vs in the controlled model at .925. Adding the therm1 term (controlling for term1) increases the $R^2$ by so much because with the therm1 term that we found to be a very strong predictor of therm2 has now been added to the regression model. At first, we are only looking at treatment status as a prediction for therm2. As we can see, treatment explains only a small portion of variation in thermometer response on the second wave. Once we add therm1, the regression model better explains the variation.
+
+As such, we can see that much of the variation in follow-up attitudes are better explained by their initial response (where they started) than who was canvassing (treatment).
+
+```{r}
+data4.5 <- data.frame(treated = c(1, 0), therm1 = c(50, 50))
+
+prediction <- predict(fit_4.4, data4.5)
+prediction
+
+pred_diff <- prediction[1] - prediction[2]
+pred_diff
+```
+
+The predicted therm2 for hypothetical person 1 and hypothetical person 2 is 52.476 and 50.018 respectively. Thus, the predicted difference in therm2 response is 2.459.
