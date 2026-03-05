@@ -114,4 +114,127 @@ The Wave 2 mean for No Contact is 3.0396, and for Same-Sex Marriage Script by Ga
 
 Because the groups were essentially identical at baseline (standardized difference about −0.01), this Wave 2 difference suggests a causal effect of the treatment. Specifically, exposure to the same-sex marriage script delivered by a gay canvasser increased support for same-sex marriage by about 0.10 points relative to no contact.
 
+# Part 2: The Forensic Discovery
+
+## 2.1: The Baseline Distribution
+
+### Q.2.1
+
+```{r}
+gay_r <- read_csv("data/raw/gayreshaped.csv")
+ccap <- read_csv("data/raw/ccap2012.csv")
+```
+
+```{r}
+nrow(gay_r)
+nrow(ccap)
+
+colnames(gay_r)
+colnames(ccap)
+```
+
+We can see that there are 11948 observations in the "gay reshaped" dataset and 43998 in the ccap2012 dataset.
+
+For gay reshaped, the column names are study, treatment, therm1, therm2, therm3, and therm4. meanwhile for the ccap2012 dataset, the column names are ..1, caseid, and gaytherm.
+
+### Q.2.2
+
+```{r}
+gay_study1_stats <- gay_r %>%
+  filter(study == 1) %>%
+  summarise(mean = mean(therm1),
+            median = median(therm1),
+            sd = sd(therm1))
+
+ccap_stats <- ccap %>%
+  summarise(mean = mean(gaytherm, na.rm = TRUE),
+            median = median(gaytherm, na.rm = TRUE),
+            sd = sd(gaytherm, na.rm = TRUE))
+
+bind_rows(GayR_Study1_Therm1 = gay_study1_stats,
+          CCAP_GayTherm = ccap_stats, .id = "Dataset")
+```
+
+The two datasets look very similar. The means (58.38 vs. 58.71), medians (52 vs. 54), and standard deviations (28.50 vs. 29.37) are nearly identical, indicating very similar distributions of baseline feelings toward gay men and lesbians. This suggests that the Study 1 experimental sample closely resembles the broader CCAP 2012 sample in overall feeling toward gay people.
+
+### Q.2.3
+
+```{r}
+gay_r2.3 <- gay_r %>%
+  filter(study == 1) %>%
+  select(therm1) %>%
+  mutate(source = "LaCour Study 1", therm = therm1) %>%
+  select(source, therm)
+
+ccap_2.3 <- ccap %>%
+  select(gaytherm) %>%
+  filter(!is.na(gaytherm)) %>%
+  mutate(source = "CCAP 2012", therm = gaytherm) %>%
+  select(source, therm)
+
+combined <- bind_rows(gay_r2.3, ccap_2.3)
+
+ggplot(combined, aes(x = therm, fill = source)) +
+  geom_histogram(breaks = seq(0, 100, by = 5)) +
+  facet_wrap(~source) +
+  labs(title = "Baseline Feeling Thermometer Comparison Between LaCour and CCAP",
+       x = "Feeling Thermometer (0–100)",
+       y = "Count") +
+  theme(legend.position = "none")
+```
+
+Based on the two graphs, it is clear that the LaCour Study 1 and CCAP2012 baselines are from similar populations. If the two are truly randomly selected, the shape of the two distributions should show resemblance. As we can see, that is the case where there are three peaks: one near 0, one near 50 (which is the highest) and another near 100 (the second largest) on the feeling thermometer scale.
+
+While the CCAP2012 has higher peaks, the distributions are similar. The difference in counts is explainable by the fact that CCAP2012 had a higher dataset size than the LeCour Study 1.
+
+## 2.2: Re-test Reliability
+
+### Q.2.4
+
+```{r}
+control <- gay_r %>%
+  filter(treatment == "No Contact" & study %in% c(1, 2)) %>%
+  group_by(study) %>%
+  summarise(correlation = cor(therm1, therm2, use = "complete.obs"),
+            sd_change = sd(therm2 - therm1, na.rm = TRUE))
+
+control
+```
+
+Study 1 shows an extremely high re-test correlation (0.998), which is unrealisticly close to perfect stability. Its per-person change standard deviation (1.99) is also unusually small, indicating very little variation in responses between the waves. In contrast, Study 2’s correlation (0.973) is within the expected 0.95–0.97 range, and its larger change standard deviation (6.61) shows more realistic variation in responses. So, Study 2 has the more realistic pattern of test–retest reliability.
+
+### Q.2.5
+
+```{r}
+control2.5 <- gay_r %>%
+  filter(treatment == "No Contact", study %in% c(1, 2)) %>%
+  select(study, therm1, therm2)
+
+ggplot(control2.5, aes(x = therm1, y = therm2, color = study)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0) +
+  facet_wrap(~study, labeller = labeller(study = c(`1` = "Study 1",
+                                                   `2` = "Study 2"))) +
+  labs(title = "Test–Retest Feeling Thermometers (Control Group)",
+       x = "Therm1", 
+       y = "Therm2") +
+  theme(legend.position = "none")
+```
+
+The Study 1 control group scatterplot shows points lying very closely to the 45-degree line, with many observations appearing identical across waves (especially at 0, 50, and 100). There is basically no variation around the line, which suggests nearly perfect test–retest connection. This is unrealistic for real longitudinal survey data where some measurement error and feeling fluctuation are expected.
+
+Study 2 shows tight but clear scatter around the 45-degree line. Responses are strongly correlated but not identical, which reflects normal rounding, mood changes, and survey noise. Study 2 therefore looks much more like genuine longitudinal data.
+
+## 2.3: Putting It All Together
+
+### Q.2.6
+
+From the testing that we have done, we have strong evidence that the data was fabricated instead of from real survey data. From Study 1, we found the baseline feeling thermometer distribution to be nearly identical to the CCAP2012 survey with means of 58.4 and 58.7 respectively and standard deviations of 28.5 and 29.4 respectively. This is unlikely if the samples were collected independently.
+
+Moreover, we found the study 1 control re-test correlation to be .998 which is much higher than the typical .95-.97 range thus we further suspect fabrication as this suggests that respondents answered nearly identical from wave to wave.
+
+Finally, the standard deviation of per-person change in study 1 was only 1.99 while in study 2 it was much larger at 6.61. We can argue for fabrication as the standard deviation in 1 suggest that there was very little individual fluctuation between waves.
+
+One might produce data with these properties as it mimics an existing dataset thus ensuring realistic distributions, but there is little variation from the baseline producing patterns that seem consistent over time.
+
 # 
